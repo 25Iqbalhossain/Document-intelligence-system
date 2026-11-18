@@ -61,8 +61,6 @@ See docs/architecture.md.
 306 backend tests pass (+ 6 frontend unit tests) (`pytest` in `backend/`): 13 schema, 36 processor, 24 text-pipeline, 65 normalizer, 30 validation-rule, 10 validation-service, 41 evidence/LLM-provider/schema, 25 extractor, 17 extraction-pipeline (DB). Set `DOCINT_REQUIRE_DB=1` so a missing database fails instead of skipping. Ruff clean.
 Mutation check: disabling the evidence check fails 10 tests; disabling the re-extraction overwrite guard fails its test.
 End-to-end (`scripts/e2e_worker_check.py`): real Celery worker (2 processes) + Redis + PostgreSQL + real Tesseract processed a 120-page digital PDF (7 jobs), a scanned PDF and a 3-sheet XLSX; after the extraction stages were added, all three ran the full chain (text -> classify/extract -> validate) and ended in `needs_review` (the mock LLM extracts nothing and never fabricates; the spreadsheet produced invoices that validation flagged for a missing currency), 100% pages done, OCR text contained the invoice number, 3.2 s total. Tiny synthetic files: this shows the plumbing works, not throughput.
-Benchmarks: see docs/performance-notes.md.
-
 ## Exact next steps
 1. Phase 11-12: security and performance checks, committed browser tests.
 2. Obtain real labeled documents (and an LLM key) for Phase 13 evaluation; until then no accuracy figures can be reported.
