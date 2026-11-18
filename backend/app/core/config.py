@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     login_rate_limit_per_min: int = 10  # per client IP + email
     upload_rate_limit_per_min: int = 60  # per user
     cors_origins: str = ""  # comma-separated; empty = no cross-origin access
+    trust_proxy_headers: bool = True  # parse X-Forwarded-For / X-Real-IP for client IP behind reverse proxy
 
     # Storage / uploads
     storage_root: str = "/data/storage"

@@ -17,8 +17,10 @@ Last updated: Phase 1 complete.
   Verified: `tsc` strict clean, `vite build`, 6 vitest unit tests, and a Playwright run in real Chromium against the live stack (uvicorn + Celery + Postgres + Redis): bad login, session restore on reload, upload rejection, CSV upload through the worker, edit+save+audit, resolve findings, approve, queue, search, reconciliation with discrepancy, user page, sign-out, and no horizontal overflow at 390px on 7 pages. That browser script is not committed as an automated suite yet.
   Also added: `frontend.Dockerfile` + `nginx.conf` (CSP, upload streaming, /metrics blocked), `beat` service and worker `-Q default,ocr` in compose. **None of the Docker files have been built or run (no Docker daemon).**
 
+- Phase 8b: user management hardening (admin user activation/deactivation with self-lockout prevention, admin password reset, self-service password change, active session revocation on status/password updates, and proxy-aware client IP extraction supporting X-Forwarded-For and X-Real-IP).
+
 ## Pending phases
-8b (user disable/password change; per-IP limits behind a proxy), 11 Testing (commit the Playwright suite, frontend component tests), 12 Performance/Security, 13 Evaluation, 14 Deployment.
+11 Testing (commit the Playwright suite, frontend component tests), 12 Performance/Security, 13 Evaluation, 14 Deployment.
 
 ## Five-Day Roadmap
 

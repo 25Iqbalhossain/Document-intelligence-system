@@ -42,6 +42,18 @@ class RefreshIn(BaseModel):
     refresh_token: str
 
 
+class ChangePasswordIn(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=12, max_length=256)
+
+
+class UserUpdateIn(BaseModel):
+    is_active: bool | None = None
+    role: UserRole | None = None
+    full_name: str | None = None
+    password: str | None = Field(default=None, min_length=12, max_length=256)
+
+
 class UserIn(BaseModel):
     email: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$", max_length=320)
     password: str = Field(min_length=12, max_length=256)
@@ -100,7 +112,7 @@ def refresh(body: RefreshIn, db: Session = Depends(get_db), s: Settings = Depend
     return _issue(db, user, s)
 
 
-@router.post("/auth/logout", status_code=204)
+@router.post("/auth/logout", status_code=204, response_model=None)
 def logout(body: RefreshIn, db: Session = Depends(get_db)) -> None:
     row = db.scalar(select(RefreshToken).where(RefreshToken.token_hash == hash_refresh_token(body.refresh_token)))
     if row and row.revoked_at is None:
@@ -127,3 +139,60 @@ def create_user(body: UserIn, db: Session = Depends(get_db), _: User = Depends(r
 @router.get("/users", response_model=list[UserOut])
 def list_users(db: Session = Depends(get_db), _: User = Depends(require_role(UserRole.admin))):
     return db.scalars(select(User).order_by(User.email)).all()
+
+
+@router.patch("/users/{user_id}", response_model=UserOut)
+def update_user(
+    user_id: uuid.UUID,
+    body: UserUpdateIn,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_role(UserRole.admin)),
+) -> User:
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
+    # Prevent admin lockout
+    if user.id == admin_user.id:
+        if body.is_active is False:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Admins cannot deactivate their own account")
+        if body.role is not None and body.role != UserRole.admin:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Admins cannot remove their own admin role")
+
+    if body.is_active is not None:
+        user.is_active = body.is_active
+        if not body.is_active:
+            for t in db.scalars(select(RefreshToken).where(RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None))):
+                t.revoked_at = datetime.now(UTC)
+
+    if body.role is not None:
+        user.role = body.role
+
+    if body.full_name is not None:
+        user.full_name = body.full_name.strip() if body.full_name else None
+
+    if body.password is not None:
+        user.password_hash = hash_password(body.password)
+        for t in db.scalars(select(RefreshToken).where(RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None))):
+            t.revoked_at = datetime.now(UTC)
+
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.post("/auth/change-password", status_code=204, response_model=None)
+def change_password(
+    body: ChangePasswordIn,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    if not verify_password(body.current_password, user.password_hash):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Current password is incorrect")
+    if body.current_password == body.new_password:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "New password must be different from current password")
+    user.password_hash = hash_password(body.new_password)
+    # Revoke all active refresh tokens on password change
+    for t in db.scalars(select(RefreshToken).where(RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None))):
+        t.revoked_at = datetime.now(UTC)
+    db.commit()

@@ -67,4 +67,14 @@ def get_document_for(db: Session, user: User, document_id: uuid.UUID) -> Documen
 
 
 def client_ip(request: Request) -> str:
+    s = get_settings()
+    if s.trust_proxy_headers:
+        xff = request.headers.get("x-forwarded-for")
+        if xff:
+            first_ip = xff.split(",")[0].strip()
+            if first_ip:
+                return first_ip
+        x_real_ip = request.headers.get("x-real-ip")
+        if x_real_ip and x_real_ip.strip():
+            return x_real_ip.strip()
     return request.client.host if request.client else "unknown"

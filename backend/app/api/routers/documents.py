@@ -151,7 +151,7 @@ def download(document_id: uuid.UUID, db: Session = Depends(get_db), user: User =
                         headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "private, no-store"})
 
 
-@router.delete("/documents/{document_id}", status_code=204)
+@router.delete("/documents/{document_id}", status_code=204, response_model=None)
 def delete_document(document_id: uuid.UUID, db: Session = Depends(get_db),
                     user: User = Depends(require_role(UserRole.admin))) -> None:
     doc = get_document_for(db, user, document_id)

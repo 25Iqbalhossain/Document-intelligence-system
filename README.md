@@ -146,7 +146,9 @@ stateDiagram-v2
 1. **Transactional Outbox Pattern:** Creating a document job and enqueuing a Celery message span two distinct storage systems. To prevent distributed race conditions or lost jobs during broker outages, the API transaction commits the job row and an `outbox` event atomically to PostgreSQL. The Celery Beat relay reads unpublished outbox rows and delivers them to Redis with acknowledgment.
 2. **Page-Batch Sub-Jobs (Constant Memory Footprint):** Documents up to ~1,000 pages are split into discrete sub-jobs (default: 20 pages per batch). PyMuPDF processes and releases pixmaps batch by batch. A worker crash aborts at most one batch, and progress (`pages_done / pages_total`) is updated in real time.
 3. **Idempotent Job Pipeline:** Every job execution key is generated as:
-   $$\text{idempotency\_key} = \text{SHA-256}(\text{document\_id} + \text{stage} + \text{input\_hash} + \text{pipeline\_version})$$
+   ```text
+   idempotency_key = SHA-256(document_id + stage + input_hash + pipeline_version)
+   ```
    Re-running an already completed stage is an immediate no-op.
 4. **Optimistic Locking for Corrections:** Invoice reviews and edits use an incrementing `version` column. Concurrent edits from multiple reviewers result in an immediate `409 Conflict` rather than silent overwrites.
 5. **Circuit Breaking & Fallback LLMs:** If the primary LLM fails schema extraction after an automated JSON repair prompt, the extractor cascades to a configured fallback model before gracefully routing the document to human review.
@@ -173,7 +175,7 @@ stateDiagram-v2
   - Bengali & Arabic numeral conversion (e.g., `০১২৩৪৫৬৭৮৯` $\rightarrow$ `0123456789`).
   - South Asian number formatting (lakh/crore: `1,00,000.00`) and European decimal commas (`1.000,00`).
   - Date normalization handling `DD/MM/YYYY`, `MM/DD/YYYY`, and ISO formats, raising ambiguity warnings when day and month are interchangeable ($\le 12$).
-  - Multi-currency detection (`BDT`, `৳`, `USD`, `$`, `EUR`, `€`, `GBP`, `£`, `INR`, `₹`).
+  - Multi-currency detection (`BDT`, `৳`, `USD`, `\$`, `EUR`, `€`, `GBP`, `£`, `INR`, `₹`).
 
 ### 3. Deterministic Financial Validation Engine
 *Location: `backend/app/validation/`*
@@ -182,7 +184,7 @@ The validation engine is completely separated from LLMs and operates purely on P
 2. `invoice_date_valid`: Flags future dates or dates outside the plausible business boundary.
 3. `duplicate_invoice`: Identifies duplicates and conflicting data across existing records for the same supplier without destructive deletion.
 4. `subtotal_matches_lines`: Verifies $\sum (\text{line totals}) = \text{subtotal}$ within configurable rounding tolerances.
-5. `line_totals_match`: Verifies $\text{quantity} \times \text{unit\_price} (+\text{tax}) = \text{line\_total}$.
+5. `line_totals_match`: Verifies $\text{quantity} \times \text{unit price} (+ \text{tax}) = \text{line total}$.
 6. `tax_matches_lines`: Asserts header tax equals line tax sum and flags if tax exceeds subtotal.
 7. `total_matches`: Verifies $\text{subtotal} + \text{tax} = \text{total}$.
 8. `currency_consistent`: Detects conflicting or mixed currencies across header and line items.
@@ -203,7 +205,7 @@ The validation engine is completely separated from LLMs and operates purely on P
   - **Full-Text Search:** Uses PostgreSQL `websearch_to_tsquery` over `extracted_text.tsv` (Simple dictionary, enabling multilingual support).
   - **Semantic Vector Search:** pgvector cosine distance over 384-dimensional document chunk embeddings with an HNSW index.
 - **Reciprocal Rank Fusion (RRF):** Merges rank positions from keyword and vector candidate sets:
-  $$\text{RRF\_Score}(d) = \sum_{m \in \{\text{fts}, \text{vector}\}} \frac{1}{60 + \text{rank}_m(d)}$$
+  $$\text{RRF}(d) = \sum_{m \in \{\text{fts}, \text{vector}\}} \frac{1}{60 + \text{rank}_m(d)}$$
 
 ### 6. Human-in-the-Loop Review & Audit Trail
 *Location: `backend/app/services/corrections.py`, `backend/app/models/invoices.py`*
@@ -620,13 +622,13 @@ The system implementation status is tracked transparently in [`docs/IMPLEMENTATI
 - [x] Hybrid search combining PostgreSQL FTS and pgvector embeddings via Reciprocal Rank Fusion.
 - [x] Asynchronous job orchestration with Transactional Outbox pattern and Celery Beat relay.
 - [x] Full REST API under `/api/v1` with RBAC, rotating refresh tokens, and rate limiting.
+- [x] User management hardening: self-service password change, admin account deactivation/reset, and proxy-aware rate limiting (Phase 8b).
 - [x] 10-page React 18 + TypeScript + Tailwind CSS review and management application.
 
 ### Next Steps & Production Hardening
 - [ ] Connect production LLM endpoint and evaluate accuracy on a labeled real-world invoice corpus.
 - [ ] Install and evaluate the Bengali (`ben`) Tesseract language model on native documents.
 - [ ] Commit automated end-to-end browser regression tests using Playwright.
-- [ ] Implement user password change and account deactivation endpoints (Phase 8b).
 - [ ] Connect S3-compatible cloud storage adapter for distributed multi-node file access.
 
 ---
