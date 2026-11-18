@@ -34,7 +34,7 @@
    - [Option B: Containerized Deployment via Docker Compose](#option-b-containerized-deployment-via-docker-compose)
 7. [Environment Configuration Reference (.env)](#environment-configuration-reference-env)
 8. [API Architecture & Key Endpoints](#api-architecture--key-endpoints)
-9. [Testing & Quality Assurance](#testing--quality-assurance)
+9. [Code Quality & Runtime Verification](#code-quality--runtime-verification)
 10. [Troubleshooting & Senior Developer Field Notes](#troubleshooting--senior-developer-field-notes)
 11. [Project Status & Roadmap](#project-status--roadmap)
 
@@ -70,7 +70,7 @@ flowchart TD
 
     subgraph APILayer["API Gateway & Domain Services"]
         API["FastAPI Modular Monolith<br/>(Port 8000)"]
-        UI -->|/api/* (Vite Proxy)| API
+        UI -->|"/api/* (Vite Proxy)"| API
         AUTH["Auth & RBAC<br/>(JWT + Rotating Refresh)"]
         INGEST["Ingestion Service<br/>(Magic-byte validation)"]
         VAL["Validation Engine<br/>(Decimal Rule Engine)"]
